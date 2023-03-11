@@ -37,19 +37,22 @@ module.exports = new ChatInputCommand({
     const fcLatency = sent.createdTimestamp - interaction.createdTimestamp;
 
     // Utility function for getting appropriate status emojis
-    const getMsEmoji = (ms) => {
-      let emoji = undefined;
-
-      for (const [ key, value ] of Object.entries({
+    const getMsEmoji = (ms, defaultEmoji = '🔴') => {
+      let emoji = defaultEmoji;
+    
+      for (const threshold in {
         250: '🟢',
         500: '🟡',
         1000: '🟠'
-      })) if (ms <= key) {
-        emoji = value;
-        break;
+      }) {
+        if (ms <= threshold) {
+          emoji = { [threshold]: emoji }[threshold] ?? '🔴';
+          break;
+        }
       }
-      return (emoji ??= '🔴');
+      return emoji;
     };
+    
 
     // Memory Variables
     const memoryUsage = process.memoryUsage();
