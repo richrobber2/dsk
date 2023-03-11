@@ -25,20 +25,28 @@ const {
 
 /**
  * Transforms hex and rgb color input into integer color code
- * @method colorResolver
- * @param {string | Array<number>} [input] Hex color code or RGB array
- * @returns {number}
+ * @param {string | Array<number>} [color] - Hex color code or RGB array
+ * @returns {number} - Integer color code
  */
-const colorResolver = (input) => {
+const colorResolver = (color) => {
   // Return main bot color if no input is provided
-  if (!input) return parseInt(colors.main.slice(1), 16);
-  // Hex values
-  if (typeof input === 'string') input = parseInt(input.slice(1), 16);
-  // RGB values
-  else input = (input[0] << 16) + (input[1] << 8) + input[2];
-  // Returning our result
-  return input;
+  if (!color) {
+    const mainColorCode = parseInt(colors.main.slice(1), 16);
+    return mainColorCode;
+  }
+
+  // Transform hex values to integer color code
+  if (typeof color === 'string') {
+    const hexColorCode = parseInt(color.slice(1), 16);
+    return hexColorCode;
+  }
+
+  // Transform RGB values to integer color code
+  const [r, g, b] = color;
+  const rgbColorCode = (r << 16) + (g << 8) + b;
+  return rgbColorCode;
 };
+
 
 /**
  * Get an array of (resolved) absolute file paths in the target directory,
