@@ -25,60 +25,76 @@ const {
 
 /**
  * Transforms hex and rgb color input into integer color code
- * @param {string | Array<number>} [color] - Hex color code or RGB array
- * @returns {number} - Integer color code
+ * @method colorResolver
+ * @param {string | Array<number>} [input] Hex color code or RGB array
+ * @returns {number}
  */
-const colorResolver = (color) => {
+const colorResolver = (input) => {
   // Return main bot color if no input is provided
-  if (!color) {
-    const mainColorCode = parseInt(colors.main.slice(1), 16);
-    return mainColorCode;
-  }
-
-  // Transform hex values to integer color code
-  if (typeof color === 'string') {
-    const hexColorCode = parseInt(color.slice(1), 16);
-    return hexColorCode;
-  }
-
-  // Transform RGB values to integer color code
-  const [r, g, b] = color;
-  const rgbColorCode = (r << 16) + (g << 8) + b;
-  return rgbColorCode;
+  if (!input) return parseInt(colors.main.slice(1), 16);
+  // Hex values
+  if (typeof input === 'string') input = parseInt(input.slice(1), 16);
+  // RGB values
+  else input = (input[0] << 16) + (input[1] << 8) + input[2];
+  // Returning our result
+  return input;
 };
-
 
 /**
  * Get an array of (resolved) absolute file paths in the target directory,
  * Ignores files that start with a "." character
- * @param {string} requestedPath Absolute path to the directory
- * @param {Array<string>} [allowedExtensions=['.js', '.mjs', '.cjs']] Array of file extensions
- * @returns {Array<string>} Array of (resolved) absolute file paths
+ * @param {string} requestedPath - Absolute path to the directory
+ * @param {Array<string>|string} [allowedExtensions=['.js', '.mjs', '.cjs']] - Array of file extensions
+ * @returns {Array<string>} - Array of (resolved) absolute file paths
  */
 const getFiles = (requestedPath, allowedExtensions = [
   '.js',
   '.mjs',
   '.cjs'
 ]) => {
-  if (typeof allowedExtensions === 'string') allowedExtensions = [ allowedExtensions ];
-  requestedPath ??= path.resolve(requestedPath);
-  let res = [];
+  // If a single extension is passed as a string, convert it to an array
+  if (typeof allowedExtensions === 'string') {
+    allowedExtensions = [allowedExtensions];
+  }
 
-  for (let itemInDir of readdirSync(requestedPath)) {
+  // Resolve the path to the target directory
+  requestedPath = requestedPath ?? path.resolve(requestedPath);
+
+  // Get an array of items in the target directory
+  const itemsInDir = readdirSync(requestedPath);
+
+  // Filter the items in the directory and return an array of file paths
+  const files = itemsInDir.flatMap((itemInDir) => {
+    // Resolve the path of the current item in the directory
     itemInDir = path.resolve(requestedPath, itemInDir);
+
+    // Get the stats of the current item in the directory
     const stat = statSync(itemInDir);
 
-    if (stat.isDirectory()) res = res.concat(getFiles(itemInDir, allowedExtensions));
-    if (
-      stat.isFile()
-      && allowedExtensions.find((ext) => itemInDir.endsWith(ext))
-      && !itemInDir.slice(
-        itemInDir.lastIndexOf(path.sep) + 1, itemInDir.length
-      ).startsWith('.')
-    ) res.push(itemInDir);
-  }
-  return res;
+    if (stat.isDirectory()) {
+      // If the current item is a directory, recursively call the function
+      // to get the files in the subdirectory
+      return getFiles(itemInDir, allowedExtensions);
+    }
+
+    // Get the name of the current file
+    const fileName = itemInDir.slice(itemInDir.lastIndexOf(path.sep) + 1);
+
+    // Ignore hidden files and files that do not have an allowed extension
+    const isHiddenFile = fileName.startsWith('.');
+    const hasAllowedExtension = allowedExtensions.some((ext) => fileName.endsWith(ext));
+    if (stat.isFile() && hasAllowedExtension && !isHiddenFile) {
+      // Return the path of the current file if it meets the conditions
+      return [itemInDir];
+    }
+
+    // Return an empty array otherwise
+    return [];
+  });
+
+  return files;
 };
+
 
 /**
  * Utility function for getting the relative time string using moment
@@ -119,7 +135,7 @@ const splitCamelCaseStr = (str, joinCharacter = ' ') => {
  * @param {*} str The string to capitalize
  * @returns {string} Capitalized string
  */
-const capitalizeString = (str) => `${ str.charAt(0).toUpperCase() }${ str.slice(1) }`;
+const capitalizeString = (str) => `${str.charAt(0).toUpperCase()}${str.slice(1)}`;
 
 /**
  * String converter: Parses a SNAKE_CASE_ARRAY to title-cased strings in an array
@@ -141,10 +157,10 @@ const parseSnakeCaseArray = (arr) => {
  */
 const getBotInviteLink = (client) => {
   const { commands } = client.container;
-  const uniqueCombinedPermissions = [ ...new Set([].concat(...commands.map(((cmd) => cmd.clientPerms)))) ];
+  const uniqueCombinedPermissions = [...new Set([].concat(...commands.map(((cmd) => cmd.clientPerms))))];
 
   return client.generateInvite({
-    scopes: [ OAuth2Scopes.ApplicationsCommands, OAuth2Scopes.Bot ],
+    scopes: [OAuth2Scopes.ApplicationsCommands, OAuth2Scopes.Bot],
     permissions: uniqueCombinedPermissions.map((rawPerm) => PermissionFlagsBits[rawPerm])
   });
 };
