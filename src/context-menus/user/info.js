@@ -83,7 +83,10 @@ module.exports = new UserContextCommand({
         **Joined Server:** ${ relativeTimeSinceJoin } | <t:${ Math.round(targetMember.joinedTimestamp / MS_IN_ONE_SECOND) }>
         **Account Created:** ${ relativeTimeSinceCreate } | <t:${ Math.round(targetUser.createdTimestamp / MS_IN_ONE_SECOND) }:D>
         **Boost Status:**: ${ boostString }
-        
+        **Avatar:** [User Avatar](${ targetMember.user.avatarURL({ dynamic: true }) } "${ targetMember.displayName }'s Avatar")
+        **Status:** ${ targetMember.user.presence.status }
+        **Activity:** ${ targetMember.user.presence.activities.length > 0 ? targetMember.user.presence.activities[0].name : 'No active activity' }
+        **Bot:** ${ targetMember.user.bot ? 'Yes' : 'No' }        
       `,
       footer: { text: `ID: ${ targetMember.user.id }` }
     });

@@ -2,9 +2,12 @@
 require('dotenv').config();
 const logger = require('@mirasaki/logger');
 const chalk = require('chalk');
+const Keyv = require('keyv');
 const {
   Client, GatewayIntentBits, ActivityType, PresenceUpdateStatus
 } = require('discord.js');
+const axios = require('axios');
+
 
 // Local imports
 const pkg = require('../package');
@@ -247,6 +250,16 @@ logger.success(`Finished initializing after ${ getRuntime(initTimerStart).ms } m
 
 // Require our server index file if requested
 if (USE_API === 'true') require('./server/');
+
+// make a connection to a keyv database, if none exists, it will create one
+const keyv = new Keyv('sqlite://database.sqlite');
+keyv.on('error', (err) => logger.error('Keyv connection error:', err));
+
+// Bind our keyv instance to our client
+client.keyv = keyv;
+
+// add axios to our client
+client.axios = axios;
 
 // Logging in to our client
 client.login(DISCORD_BOT_TOKEN);

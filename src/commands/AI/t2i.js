@@ -43,25 +43,32 @@ module.exports = new ChatInputCommand({
                 type: ApplicationCommandOptionType.String,
                 required: false
             },
+            {
+                name: 'amount',
+                description: 'how many images are you wanting to generate?',
+                type: ApplicationCommandOptionType.Number,
+                required: false,
+                minValue: 1,
+                maxValue: 10,
+            },
         ],
-        // Unavailable to non-admins in guilds
-        default_member_permissions: 0
     },
 
     run: async (client, interaction) => {
         try {
+            // defer the reply so the user knows the bot is working
             await interaction.deferReply();
-
-            // Get all the options from the interaction
             const options = interaction.options;
-
-            // Access individual options using their names
+            
+            // get the options
             const prompt = options.getString('prompt');
             const cfg = options.getNumber('cfg');
             const steps = options.getNumber('steps');
             const seed = options.getNumber('seed');
             const negative = options.getString('negative');
+            const amount = options.getNumber('amount');
 
+            // create the data object
             const data = {
                 "enable_hr": false,
                 "denoising_strength": 0,
@@ -78,7 +85,7 @@ module.exports = new ChatInputCommand({
                 "seed_resize_from_w": -1,
                 "sampler_name": null,
                 "batch_size": 1,
-                "n_iter": 4,
+                "n_iter": amount || 1,
                 "steps": steps | 40,
                 "cfg_scale": cfg | 7,
                 "width": 512,
@@ -94,27 +101,26 @@ module.exports = new ChatInputCommand({
                 "override_settings": {},
                 "sampler_index": "DDIM"
             }
+            // send the data to the api
+            const response = await client.axios.post('http://127.0.0.1:7861/sdapi/v1/txt2img', data);
 
+            // Create an array of files
+            const files = response.data.images.map(imageData => ({
+                attachment: Buffer.from(imageData, 'base64'),
+                name: 'imagename.png',
+                
+            }));
+            // save data to keyv db
+            await client.keyv.set(interaction.user.id, response.data);
 
-            const response = await axios.post('http://127.0.0.1:7860/sdapi/v1/txt2img', data);
-            const files = [];
-            for (const imageData of response.data.images) {
-                files.push({
-                    attachment: Buffer.from(imageData, 'base64'),
-                    name: 'imagename.png'
-                });
-            }
-
-
-            await interaction.editReply({
-                content: "here is your images",
-                files
-            });
-
-
+            // send the array of files there is a max of 10 files per message
+            await interaction.editReply({ content: "here are your images", files });
         } catch (error) {
+            // Log the error
             console.error(error);
             interaction.editReply('An error occurred while processing your request.');
+            // Send the error to the owner
+            client.users.fetch(client.config.ownerID).then(user => user.send(`An error occurred while processing a request in ${interaction.guild.name}:\n\`\`\`${error.stack}\`\`\``));
         }
     }
 });

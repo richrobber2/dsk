@@ -85,24 +85,24 @@ const rest = new REST({ version: '10' })
  */
 const clearApplicationCommandData = () => {
   logger.info('Clearing ApplicationCommand API data');
+  
   rest.put(Routes.applicationCommands(CLIENT_ID), { body: [] });
-  rest.put(
-    Routes.applicationGuildCommands(CLIENT_ID, TEST_SERVER_GUILD_ID),
-    { body: [] }
-  )
+  rest.put(Routes.applicationGuildCommands(CLIENT_ID, TEST_SERVER_GUILD_ID), { body: [] })
     .catch((err) => {
       // Catching Missing Access error
-      logger.syserr('Error encountered while trying to clear GuildCommands in the test server, this probably means your TEST_SERVER_GUILD_ID in the .env file is invalid or the client isn\'t currently in that server');
+      logger.syserr('Error encountered while trying to clear GuildCommands in the test server. This probably means your TEST_SERVER_GUILD_ID in the .env file is invalid or the client isn\'t currently in that server.');
       logger.syserr(err);
     });
+    
   logger.success('Successfully reset all Slash Commands. It may take up to an hour for global changes to take effect.');
   logger.syslog(chalk.redBright('Shutting down...'));
   process.exit(1);
 };
 
+
 /**
  * Sorts a collection of commands by command category
- * @param {external:DiscordCollection<string, ChatInputCommand | UserContextCommand | MessageContextCommand>} commands The collections of commands to sort
+ * @param {external:DiscordCollection<string, ChatInputCommand | UserContextCommand | MessageContextCommand>} commands The collection of commands to sort
  * @returns {Array<Command>}
  */
 const sortCommandsByCategory = (commands) => {
@@ -115,16 +115,18 @@ const sortCommandsByCategory = (commands) => {
     if (currentCategory !== workingCategory) {
       sorted.push({
         category: workingCategory,
-        commands: [ cmd ]
+        commands: [cmd]
       });
       currentCategory = workingCategory;
+    } else {
+      const categoryEntry = sorted.find((e) => e.category === currentCategory);
+      categoryEntry.commands.unshift(cmd);
     }
-    else sorted
-      .find((e) => e.category === currentCategory).commands
-      .unshift(cmd);
   });
+
   return sorted;
 };
+
 
 /**
  * Return a the commands data object and removes the description field for Context Menu commands
@@ -192,8 +194,7 @@ const registerGlobalCommands = async (client) => {
   const { commands, contextMenus } = client.container;
   const combinedData = commands.concat(contextMenus);
   const globalCommandData = combinedData
-    .filter((cmd) => cmd.global === true
-      && cmd.enabled === true)
+    .filter((cmd) => cmd.global && cmd.enabled)
     .map(cleanAPIData);
 
   // Extensive debug logging
@@ -204,25 +205,26 @@ const registerGlobalCommands = async (client) => {
   }
 
   // Sending the global command data
-  return await rest.put(
-    Routes.applicationCommands(CLIENT_ID),
-    { body: globalCommandData }
-  ).catch((err) => {
+  try {
+    return await rest.put(
+      Routes.applicationCommands(CLIENT_ID),
+      { body: globalCommandData }
+    );
+  } catch (err) {
     // Invalid Form Body error
     if (err.status === 400) {
-      logger.syserr(`Error encountered while trying to register command API data: ${ err.message }`);
-      for (const [ index ] in err.rawError.errors) {
+      logger.syserr(`Error encountered while trying to register command API data: ${err.message}`);
+      for (const [index] in err.rawError.errors) {
         // Logging the invalid data to the console
         console.log(err.requestBody.json[Number(index)]);
       }
-    }
-
-    else {
+    } else {
       // Unknown errors
       logger.syserr(err);
     }
-  });
+  }
 };
+
 
 /**
  * Concatenates all our API command data, and refreshes/registers server command data to the Discord API
